@@ -74,6 +74,28 @@
 
   .topbar-spacer { flex: 1; }
 
+  .menu-btn {
+    display: none;
+    width: 32px; height: 32px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 3px;
+    padding: 4px;
+    transition: background 0.2s;
+  }
+  .menu-btn:hover { background: var(--bg-hover); }
+  .menu-btn span {
+    width: 16px; height: 2px;
+    background: var(--text-2);
+    transition: all 0.2s;
+  }
+
   .status-dot {
     width: 7px; height: 7px;
     border-radius: 50%;
@@ -392,6 +414,92 @@
     to   { opacity:1; transform:translateY(0); }
   }
   .fade-up { animation: fadeUp 0.35s ease forwards; }
+
+  /* ── RESPONSIVE ── */
+
+  /* Tablet */
+  @media (max-width: 768px) {
+    .layout { flex-direction: column; }
+
+    .sidebar {
+      width: 100%;
+      height: auto;
+      max-height: 200px;
+      border-right: none;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sidebar-list {
+      display: flex;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 8px;
+      gap: 8px;
+    }
+    .sidebar-list::-webkit-scrollbar { height: 4px; width: auto; }
+
+    .etf-item {
+      flex-shrink: 0;
+      width: 140px;
+      margin-bottom: 0;
+    }
+
+    .main { padding: 16px; gap: 16px; }
+
+    .top-row {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .price-block { margin-left: 0; text-align: left; }
+
+    .tf-bar { width: 100%; justify-content: center; }
+
+    .bottom-grid { grid-template-columns: 1fr 1fr 1fr; }
+
+    .info-row { grid-template-columns: 1fr; gap: 16px; }
+
+    .chart-wrap { min-height: 300px; }
+  }
+
+  /* Mobile */
+  @media (max-width: 480px) {
+    .topbar { padding: 0 16px; height: 48px; }
+    .logo-text { font-size: 13px; }
+    .menu-btn { display: flex; }
+    .status-label { display: none; }
+
+    .sidebar { 
+      max-height: 0; 
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+    }
+    .sidebar.open { max-height: 160px; }
+
+    .sidebar-list { padding: 6px; gap: 6px; }
+    .etf-item { width: 120px; padding: 8px 10px; }
+    .etf-item .name { font-size: 12px; }
+    .etf-item .price-val { font-size: 11px; }
+
+    .main { padding: 12px; gap: 12px; }
+
+    .etf-name { font-size: 18px; }
+    .price-main { font-size: 28px; }
+
+    .tf-bar { padding: 2px; }
+    .tf-btn { font-size: 10px; padding: 4px 8px; }
+
+    .bottom-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .stat-card { padding: 10px 12px; }
+    .stat-val { font-size: 14px; }
+
+    .info-card { padding: 10px 12px; }
+    .info-card-body { font-size: 12px; }
+
+    .chart-wrap { min-height: 250px; }
+  }
 </style>
 </head>
 
@@ -402,8 +510,13 @@
   <div class="logo-mark">
     <svg viewBox="0 0 16 16"><path d="M2 12 L6 7 L9 10 L13 4 L14 5 L9 12 L6 9 Z"/></svg>
   </div>
-  <div class="logo-text">Fin<span>Vise</span></div>
+  <div class="logo-text">ETF<span>Analyzer</span></div>
   <div class="topbar-spacer"></div>
+  <button class="menu-btn" onclick="toggleSidebar()">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
   <div class="status-dot"></div>
   <div class="status-label">Live</div>
 </div>
@@ -508,6 +621,11 @@ let chart, candleSeries, volumeSeries;
 let srLines = [];
 
 /* ── SIDEBAR ── */
+function toggleSidebar() {
+  const sidebar = document.querySelector('.sidebar');
+  sidebar.classList.toggle('open');
+}
+
 function buildSidebar() {
   const sidebar = document.getElementById('sidebar');
   ETFs.forEach(e => {
