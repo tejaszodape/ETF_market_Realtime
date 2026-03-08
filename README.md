@@ -1,4 +1,4 @@
-# FinVise ETF Intelligence Terminal
+# ETF Intelligence Terminal
 
 > **Live, production-grade ETF Market Analysis Dashboard for Indian Markets**
 > Built with Django · Powered by **Twelve Data API** · AI commentary via Claude
