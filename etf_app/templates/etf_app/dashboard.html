@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinVise ETF Dashboard</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+
+<style>
+  :root {
+    --bg-deep:    #080c12;
+    --bg-mid:     #0d1219;
+    --bg-panel:   #111720;
+    --bg-hover:   #161e2b;
+    --border:     #1d2739;
+    --border-lit: #243044;
+    --accent:     #00e5b0;
+    --accent-dim: rgba(0,229,176,0.12);
+    --accent-glow:rgba(0,229,176,0.35);
+    --red:        #ff5470;
+    --red-dim:    rgba(255,84,112,0.12);
+    --text-1:     #e8f0fe;
+    --text-2:     #8899b4;
+    --text-3:     #4a5a72;
+    --mono:       'Space Mono', monospace;
+    --sans:       'DM Sans', sans-serif;
+    --radius:     10px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-1);
+    font-family: var(--sans);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── TOPBAR ── */
+  .topbar {
+    height: 56px;
+    background: var(--bg-mid);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+
+  .logo-mark {
+    width: 30px; height: 30px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .logo-mark svg { width: 16px; height: 16px; fill: var(--bg-deep); }
+
+  .logo-text {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: 0.04em;
+  }
+  .logo-text span { color: var(--accent); }
+
+  .topbar-spacer { flex: 1; }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .status-dot.offline {
+    opacity: 0.5;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50%      { opacity:.5; transform:scale(0.75); }
+  }
+  .status-label {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-label.offline {
+    opacity: 0.5;
+  }
+
+  /* ── LAYOUT ── */
+  .layout {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 220px;
+    background: var(--bg-mid);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .sidebar-header {
+    padding: 14px 16px 10px;
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text-3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .sidebar-list { overflow-y: auto; flex: 1; padding: 8px 8px; }
+  .sidebar-list::-webkit-scrollbar { width: 4px; }
+  .sidebar-list::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-list::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 4px; }
+
+  .etf-item {
+    padding: 11px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.18s, transform 0.18s;
+    position: relative;
+    overflow: hidden;
+    margin-bottom: 3px;
+  }
+  .etf-item::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--accent);
+    border-radius: 2px;
+    transform: scaleY(0);
+    transition: transform 0.2s;
+  }
+  .etf-item:hover { background: var(--bg-hover); transform: translateX(2px); }
+  .etf-item:hover::before, .etf-item.active::before { transform: scaleY(1); }
+  .etf-item.active { background: var(--bg-hover); }
+
+  .etf-item .ticker {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.06em;
+  }
+  .etf-item .name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-1);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .etf-item .price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 5px;
+  }
+  .etf-item .price-val {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--text-1);
+    font-weight: 700;
+  }
+  .etf-item .change {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .etf-item .change.up   { color: var(--accent); background: var(--accent-dim); }
+  .etf-item .change.down { color: var(--red);    background: var(--red-dim); }
+
+  /* ── MAIN ── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 20px 24px;
+    gap: 18px;
+  }
+
+  /* ── TOP ROW ── */
+  .top-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+
+  .etf-title {
+    font-size: 13px;
+    font-family: var(--mono);
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .etf-name {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--text-1);
+  }
+
+  .price-block { margin-left: auto; text-align: right; }
+  .price-main {
+    font-family: var(--mono);
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+    text-shadow: 0 0 18px var(--accent-glow);
+    letter-spacing: -0.02em;
+  }
+  .price-change {
+    font-family: var(--mono);
+    font-size: 13px;
+    margin-top: 4px;
+    font-weight: 700;
+  }
+
+  /* ── TIMEFRAME BAR ── */
+  .tf-bar {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 4px;
+    width: fit-content;
+  }
+
+  .tf-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+    transition: all 0.18s;
+  }
+  .tf-btn:hover { color: var(--text-1); background: var(--bg-hover); }
+  .tf-btn.active {
+    background: var(--accent);
+    color: var(--bg-deep);
+    font-weight: 700;
+  }
+
+  /* ── CHART ── */
+  .chart-wrap {
+    flex: 1;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    min-height: 0;
+    position: relative;
+  }
+
+  #chart { width: 100%; height: 100%; }
+
+  /* ── BOTTOM GRID ── */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .stat-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: border-color 0.2s, transform 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border-lit); transform: translateY(-2px); }
+  .stat-card:hover::after { opacity: 1; }
+
+  .stat-label {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .stat-val {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-1);
+    margin-top: 6px;
+    letter-spacing: -0.01em;
+  }
+  .stat-icon {
+    font-size: 11px;
+    margin-bottom: 2px;
+    display: block;
+    color: var(--text-3);
+  }
+
+  /* signal coloring */
+  .signal-buy  { color: var(--accent) !important; }
+  .signal-sell { color: var(--red) !important; }
+
+  /* ── DESCRIPTION & COMMENTARY ── */
+  .info-row {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 12px;
+    flex-shrink: 0;
+  }
+
+  .info-card {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .info-card-label {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .info-card-label::before {
+    content: '';
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .info-card-body {
+    font-size: 13px;
+    line-height: 1.65;
+    color: var(--text-2);
+    font-weight: 400;
+  }
+
+  /* scrollbar for main */
+  .main::-webkit-scrollbar { width: 4px; }
+  .main::-webkit-scrollbar-track { background: transparent; }
+  .main::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 4px; }
+
+  /* ── FADE-IN ── */
+  @keyframes fadeUp {
+    from { opacity:0; transform:translateY(8px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.35s ease forwards; }
+</style>
+</head>
+
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo-mark">
+    <svg viewBox="0 0 16 16"><path d="M2 12 L6 7 L9 10 L13 4 L14 5 L9 12 L6 9 Z"/></svg>
+  </div>
+  <div class="logo-text">Fin<span>Vise</span></div>
+  <div class="topbar-spacer"></div>
+  <div class="status-dot"></div>
+  <div class="status-label">Live</div>
+</div>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sidebar-header">ETF Watchlist</div>
+    <div class="sidebar-list" id="sidebar"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- TOP ROW -->
+    <div class="top-row fade-up">
+      <div>
+        <div class="etf-title" id="etf-ticker">—</div>
+        <div class="etf-name" id="etf-name">Loading...</div>
+      </div>
+      <div class="price-block">
+        <div class="price-main" id="price-main">—</div>
+        <div class="price-change" id="price-change"></div>
+      </div>
+    </div>
+
+    <!-- TIMEFRAME -->
+    <div class="tf-bar fade-up" id="tf-bar">
+      {% for tf in timeframes %}
+      <button class="tf-btn" data-key="{{ tf.key }}">{{ tf.label }}</button>
+      {% endfor %}
+    </div>
+
+    <!-- LEGEND -->
+    <div style="display: flex; gap: 30px; padding: 10px 15px; background: var(--bg-panel); border-radius: 8px; border: 1px solid var(--border); font-size: 12px; margin-top: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 20px; height: 2px; background: rgba(0, 229, 176, 0.4);"></div>
+        <span style="color: var(--text-2);">— Support Levels</span>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <div style="width: 20px; height: 2px; background: rgba(255, 84, 112, 0.4);"></div>
+        <span style="color: var(--text-2);">— Resistance Levels</span>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="chart-wrap fade-up">
+      <div id="chart"></div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="bottom-grid fade-up">
+      <div class="stat-card">
+        <span class="stat-icon">RSI</span>
+        <div class="stat-label">RSI (14)</div>
+        <div class="stat-val" id="rsi">—</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">EMA20</span>
+        <div class="stat-label">EMA 20</div>
+        <div class="stat-val" id="ema20">—</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">EMA50</span>
+        <div class="stat-label">EMA 50</div>
+        <div class="stat-val" id="ema50">—</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">SIG</span>
+        <div class="stat-label">RSI Signal</div>
+        <div class="stat-val" id="rsi-signal">—</div>
+      </div>
+      <div class="stat-card">
+        <span class="stat-icon">SIG</span>
+        <div class="stat-label">EMA Signal</div>
+        <div class="stat-val" id="ema-signal">—</div>
+      </div>
+    </div>
+
+    <!-- DESCRIPTION + COMMENTARY -->
+    <div class="info-row fade-up">
+      <div class="info-card">
+        <div class="info-card-label">Description</div>
+        <div class="info-card-body" id="description-panel">Loading…</div>
+      </div>
+      <div class="info-card">
+        <div class="info-card-label">AI Analysis</div>
+        <div class="info-card-body" id="commentary">Loading analysis…</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const ETFs = {{ etfs|safe }};
+let currentTicker = "{{ default_ticker }}";
+let currentTimeframe = "{{ default_timeframe }}";
+let chart, candleSeries, volumeSeries;
+let srLines = [];
+
+/* ── SIDEBAR ── */
+function buildSidebar() {
+  const sidebar = document.getElementById('sidebar');
+  ETFs.forEach(e => {
+    const div = document.createElement('div');
+    div.className = 'etf-item';
+    div.dataset.ticker = e.ticker;
+    div.innerHTML = `
+      <div class="ticker">${e.ticker}</div>
+      <div class="name">${e.short_name}</div>
+      <div class="price-row">
+        <span class="price-val" id="sb-price-${e.ticker}">—</span>
+        <span class="change" id="sb-change-${e.ticker}">—</span>
+      </div>`;
+    div.onclick = () => loadETF(e.ticker);
+    sidebar.appendChild(div);
+  });
+  loadSidebarPrices();
+}
+
+async function loadSidebarPrices() {
+  try {
+    const data = await fetch('/api/sidebar-prices/').then(r => r.json());
+    ETFs.forEach(e => {
+      const pd = data.prices[e.ticker];
+      if (!pd) return;
+      const pEl = document.getElementById(`sb-price-${e.ticker}`);
+      const cEl = document.getElementById(`sb-change-${e.ticker}`);
+      if (pEl) pEl.textContent = `₹${pd.price}`;
+      if (cEl) {
+        const up = parseFloat(pd.change_pct) >= 0;
+        cEl.textContent = `${up ? '+' : ''}${pd.change_pct}%`;
+        cEl.className = `change ${up ? 'up' : 'down'}`;
+      }
+    });
+  } catch {}
+}
+
+/* ── TIMEFRAME ── */
+function buildTfBar() {
+  document.querySelectorAll('.tf-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentTimeframe = btn.dataset.key;
+      document.querySelectorAll('.tf-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      loadETF(currentTicker);
+    });
+  });
+  // set active
+  const active = document.querySelector(`.tf-btn[data-key="${currentTimeframe}"]`);
+  if (active) active.classList.add('active');
+}
+
+/* ── CHART ── */
+function createChart() {
+  const container = document.getElementById('chart');
+  chart = LightweightCharts.createChart(container, {
+    layout: {
+      background: { color: '#111720' },
+      textColor: '#4a5a72',
+      fontSize: 11,
+      fontFamily: "'Space Mono', monospace",
+    },
+    grid: {
+      vertLines: { color: '#1d2739' },
+      horzLines: { color: '#1d2739' },
+    },
+    crosshair: {
+      mode: LightweightCharts.CrosshairMode.Normal,
+      vertLine: { width: 1, color: '#243044', style: LightweightCharts.LineStyle.Dashed },
+      horzLine: { width: 1, color: '#243044', style: LightweightCharts.LineStyle.Dashed },
+    },
+    rightPriceScale: { borderColor: '#1d2739' },
+    timeScale: {
+      timeVisible: true,
+      secondsVisible: false,
+      borderColor: '#1d2739',
+      fixLeftEdge: true,
+      fixRightEdge: true,
+    },
+    handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+    handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+  });
+
+  candleSeries = chart.addCandlestickSeries({
+    upColor: '#00e5b0',
+    downColor: '#ff5470',
+    borderVisible: false,
+    wickUpColor: '#00e5b0',
+    wickDownColor: '#ff5470',
+  });
+
+  volumeSeries = chart.addHistogramSeries({
+    priceScaleId: '',
+    scaleMargins: { top: 0.95, bottom: 0 },
+  });
+
+  const resizeObs = new ResizeObserver(() => {
+    const wrap = document.querySelector('.chart-wrap');
+    chart.resize(wrap.clientWidth, wrap.clientHeight);
+  });
+  resizeObs.observe(document.querySelector('.chart-wrap'));
+}
+
+/* ── LOAD ETF ── */
+async function loadETF(ticker) {
+  currentTicker = ticker;
+
+  // mark active sidebar
+  document.querySelectorAll('.etf-item').forEach(d => d.classList.toggle('active', d.dataset.ticker === ticker));
+
+  const etf = ETFs.find(e => e.ticker === ticker);
+  document.getElementById('etf-ticker').textContent = ticker;
+  document.getElementById('etf-name').textContent = etf ? etf.name : ticker;
+
+  try {
+    const data = await fetch(`/api/etf-data/?ticker=${ticker}&timeframe=${currentTimeframe}`).then(r => r.json());
+
+    // Price
+    const up = data.quote.change_pct >= 0;
+    document.getElementById('price-main').textContent = `₹${data.quote.price}`;
+    const chEl = document.getElementById('price-change');
+    chEl.textContent = `${up ? '+' : ''}${data.quote.change_pct}%`;
+    chEl.style.color = up ? '#00e5b0' : '#ff5470';
+
+    // Candles
+    candleSeries.setData(data.candles.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close })));
+    volumeSeries.setData(data.candles.map(c => ({
+      time: c.time,
+      value: c.volume / 500000,
+      color: c.close >= c.open ? 'rgba(0,229,176,0.08)' : 'rgba(255,84,112,0.08)',
+    })));
+
+    // S/R lines — remove old
+    srLines.forEach(l => chart.removeSeries(l));
+    srLines = [];
+    const sr = data.support_resistance;
+    if (sr) {
+      const addLine = (val, color, label, style = 0) => {
+        const s = chart.addLineSeries({ 
+          color: color + '40',  // Add transparency (40 = 25% opacity in hex)
+          lineWidth: 1, 
+          lineStyle: style, 
+          priceLineVisible: false
+        });
+        s.setData(data.candles.map(c => ({ time: c.time, value: val })));
+        srLines.push(s);
+      };
+      addLine(sr.support1,    '#00e5b0', 'Support 1');
+      addLine(sr.support2,    '#00e5b0', 'Support 2', 2);
+      addLine(sr.resistance1, '#ff5470', 'Resistance 1');
+      addLine(sr.resistance2, '#ff5470', 'Resistance 2', 2);
+    }
+
+    // Trend marker
+    const trendMarkers = [{
+      time: data.candles[data.candles.length - 1].time,
+      position: 'aboveBar',
+      color: data.signals.trend === 'Bullish' ? '#00e5b0' : '#ff5470',
+      shape: 'circle',
+      text: data.signals.trend,
+    }];
+
+    candleSeries.setMarkers(trendMarkers);
+
+    // Indicators
+    const rsi = data.indicators.rsi?.slice(-1)[0];
+    const e20 = data.indicators.ema20?.slice(-1)[0];
+    const e50 = data.indicators.ema50?.slice(-1)[0];
+
+    document.getElementById('rsi').textContent   = rsi != null ? rsi.toFixed(2) : '—';
+    document.getElementById('ema20').textContent = e20 != null ? `₹${e20.toFixed(2)}` : '—';
+    document.getElementById('ema50').textContent = e50 != null ? `₹${e50.toFixed(2)}` : '—';
+
+    setSignal('rsi-signal',  data.signals.rsi || '—');
+    setSignal('ema-signal',  data.signals.ema || '—');
+
+    // Update LIVE status based on market status
+    const statusDot = document.querySelector('.status-dot');
+    const statusLabel = document.querySelector('.status-label');
+    if (data.market_status && !data.market_status.is_live) {
+      statusDot.classList.add('offline');
+      statusLabel.classList.add('offline');
+      statusLabel.textContent = 'OFFLINE';
+    } else {
+      statusDot.classList.remove('offline');
+      statusLabel.classList.remove('offline');
+      statusLabel.textContent = 'LIVE';
+    }
+
+    document.getElementById('description-panel').textContent = data.description || '—';
+
+    loadCommentary(ticker);
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function setSignal(id, text) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'stat-val' + (text.includes('Buy') ? ' signal-buy' : text.includes('Sell') ? ' signal-sell' : '');
+}
+
+async function loadCommentary(ticker) {
+  try {
+    const data = await fetch(`/api/commentary/?ticker=${ticker}`).then(r => r.json());
+    document.getElementById('commentary').textContent = data.commentary;
+  } catch {}
+}
+
+/* ── BOOT ── */
+buildSidebar();
+buildTfBar();
+createChart();
+loadETF(currentTicker);
+
+setInterval(() => {
+  loadETF(currentTicker);
+  loadSidebarPrices();
+}, 5000);
+</script>
+</body>
+</html>
