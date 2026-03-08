@@ -219,7 +219,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: auto; /* allow vertical scrolling on overflow */
     padding: 20px 24px;
     gap: 18px;
   }
@@ -401,6 +401,8 @@
     line-height: 1.65;
     color: var(--text-2);
     font-weight: 400;
+    max-height: 160px;
+    overflow-y: auto;
   }
 
   /* scrollbar for main */
@@ -496,7 +498,7 @@
     .stat-val { font-size: 14px; }
 
     .info-card { padding: 10px 12px; }
-    .info-card-body { font-size: 12px; }
+    .info-card-body { font-size: 12px; max-height: 120px; }
 
     .chart-wrap { min-height: 250px; }
   }
