@@ -1,4 +1,6 @@
-# ETF Dashboard
+# ETF Dashboard  
+
+Deployed url:[ https://etf-market-realtime.onrender.com ] (Render server takes around 2 min to load for free tier)
 
 A comprehensive Django-based ETF analysis dashboard featuring interactive candlestick charts, real-time data updates, trend analysis, pattern detection, support and resistance levels, and a responsive design optimized for desktop, tablet, and mobile devices.
 
